@@ -1,4 +1,4 @@
-import { mongoose, Schema } from "mongoose";
+import mongoose,{ Schema } from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -40,7 +40,6 @@ const userSchema = new Schema({
     }
 }, { timestamps: true })
 
-export const User = mongoose.model("Profile", userSchema)
 
 User.pre("save", async (next) =>{
     this.password = await bcrypt.hash(this.password,10);
@@ -77,3 +76,6 @@ User.methods.generateRefreshToken = async () => {
         }
     )
 }
+
+
+export const User = mongoose.model("User",userSchema)
