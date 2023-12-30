@@ -4,6 +4,28 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponce } from "../utils/apiResponce.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+// A methord to generate the refresh abd access token
+const generateRefreshAccessToken = async (userId) => {
+    if (!userId) {
+        throw new ApiError(401, "User is required!!")
+    }
+
+    const user = await User.findById(userId)
+
+    const accessToken = await user.generateAccessToken()
+    const refreshToken = await user.generateRefreshToken()
+
+    user.refreshToken = refreshToken
+    user.save({ validatrBeforeSave: false })
+
+    return {
+        refreshToken,
+        accessToken
+    }
+}
+
+
+// Register the user
 const registerUser = asyncHandler(async (req, res) => {
     //get the data from the body 
     // check if the data is avable
@@ -14,10 +36,10 @@ const registerUser = asyncHandler(async (req, res) => {
     // return the responce
     const { userName, password, email, fullName, bio } = req.body
 
+    console.log(req.body);
     if (!userName || !password || !email || !fullName) {
         throw new ApiError(401, "Enter the required parameters");
     }
-
     const existUser = await User.findOne({
         $or: [{ userName, email }]
     })
@@ -64,8 +86,57 @@ const registerUser = asyncHandler(async (req, res) => {
     )
 })
 
+// Login the user
+const loginUser = asyncHandler(async (req, res) => {
+    // recive the email or username and the password from the frontend
+    // check it is not empty
+    // check if the user exist or not
+    // compair the password 
+    // generate the refresh and access token
+    // check if it exist
+    // return the responce with the cookies 
+
+    const { userName, email, password } = req.body;
+
+    if ((!userName && !email) || !password) {
+        throw new ApiError(401, "Username or emil and password is missing!!!")
+    }
+
+    const user = await User.findOne({
+        $or: [{ email }, { userName }]
+    })
+
+    if (!user) {
+        throw new ApiError(404, "User not found!!!")
+    }
+
+    const isPasswordCorrect = await user.isPasswordCorrect(password)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(402, "Wrong password!!!")
+    }
+
+    const { refreshToken, accessToken } = await generateRefreshAccessToken(user._id);
+
+    const logedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+        .status(200)
+        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken, options)
+        .json(
+            new ApiResponce(200, logedInUser, "User logged in sucessfully!!")
+        )
+
+})
 
 
 export {
     registerUser,
+    loginUser
 }
