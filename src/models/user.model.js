@@ -41,16 +41,20 @@ const userSchema = new Schema({
 }, { timestamps: true })
 
 
-User.pre("save", async (next) =>{
-    this.password = await bcrypt.hash(this.password,10);
+userSchema.pre("save", async function (next) {
+    // check if the password field is changed 
+    // we encrypt the password when only the password field is changed rather then encrypting the password when user save other thing.
+    if (!this.isModified("password")) return next();
+
+    this.password = await bcrypt.hash(this.password, 10);
     next();
 })
 
-User.methods.isPasswordCorrect = async (password) => {
+userSchema.methods.isPasswordCorrect = async (password) => {
     return await bcrypt.compare(password,this.password);
 }
 
-User.methods.generateAccessToken = async () => {
+userSchema.methods.generateAccessToken = async () => {
     jwt.sign(
         {
             _id: this._id,
@@ -65,7 +69,7 @@ User.methods.generateAccessToken = async () => {
     )
 }
 
-User.methods.generateRefreshToken = async () => {
+userSchema.methods.generateRefreshToken = async () => {
     jwt.sign(
         {
             _id: this._id,

@@ -1,4 +1,4 @@
-const DB_NAME = "social-media";
+const DB_NAME = "socialMedia";
 
 
 export { DB_NAME }
