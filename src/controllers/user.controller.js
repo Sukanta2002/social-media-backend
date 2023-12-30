@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponce } from "../utils/apiResponce.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // A methord to generate the refresh abd access token
 const generateRefreshAccessToken = async (userId) => {
@@ -159,15 +160,15 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .clearCookie("accessToken",options)
-        .clearCookie("refreshToken",options)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
         .json(
             new ApiResponce(200, {}, "User logged out Sucessfully!!")
         )
 })
 
 // for refresh the access token
-const refreshAccessToken = asyncHandler(async (req,res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
     // get the refresh token from the frontend
     // decord the refresh token
     // get the user by the id from the access token
@@ -179,46 +180,215 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
     const currentRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
 
     if (!currentRefreshToken) {
-        throw new ApiError(401,"Unauthorized access!!!")
+        throw new ApiError(401, "Unauthorized access!!!")
     }
 
-    const decodedToken = await jwt.verify(currentRefreshToken,process.env.REFERSH_TOKEN_SECRET)
+    const decodedToken = await jwt.verify(currentRefreshToken, process.env.REFERSH_TOKEN_SECRET)
 
     const user = await User.findById(decodedToken._id)
 
     if (!user) {
-        throw new ApiError(401,"Invalid refresh token")
+        throw new ApiError(401, "Invalid refresh token")
     }
 
     if (user.refreshToken !== currentRefreshToken) {
-        throw new ApiError(401,"Refresh token expaired")
+        throw new ApiError(401, "Refresh token expaired")
     }
 
-    const {refreshToken,accessToken} = await generateRefreshAccessToken(user._id)
+    const { refreshToken, accessToken } = await generateRefreshAccessToken(user._id)
 
     const options = {
-        httpOnly:true,
+        httpOnly: true,
         secure: true
     }
 
     return res
-    .status(200)
-    .cookie("accessToken",accessToken,options)
-    .cookie("refreshToken",refreshToken,options)
-    .json(
-        new ApiResponce(200,{
-            refreshToken,
-            accessToken
-        },
-        "Access Token refreshed sucessfully"
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponce(200, {
+                refreshToken,
+                accessToken
+            },
+                "Access Token refreshed sucessfully"
+            )
         )
-    )
 })
 
+// update the profile pic
+const updateProfilePic = asyncHandler(async (req, res) => {
+    // console.log(req);
+    const profilePicLocalUrl = req.file.path;
+
+    if (!profilePicLocalUrl) {
+        throw new ApiError(402, "Profile pic is required!!")
+    }
+
+    const profilePicUrl = await uploadOnCloudinary(profilePicLocalUrl)
+
+    if (!profilePicUrl) {
+        throw new ApiError(402, "Profile pic is required!!")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            profilePic: profilePicUrl.url
+        },
+        {
+            new: true
+        }
+    ).select("-password -refreshToken")
+
+    if (!user) {
+        throw new ApiError(402, "Some error in db!!")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, user, "Profilepic updated Sucessfully!")
+        )
+})
+
+// update the profile pic
+const updateCoverImage = asyncHandler(async (req, res) => {
+    // console.log(req);
+    const coverImageLocalUrl = req.file.path;
+
+    if (!coverImageLocalUrl) {
+        throw new ApiError(402, "Profile pic is required!!")
+    }
+
+    const coverImageUrl = await uploadOnCloudinary(coverImageLocalUrl)
+
+    if (!coverImageUrl) {
+        throw new ApiError(402, "Profile pic is required!!")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            profilePic: coverImageUrl.url
+        },
+        {
+            new: true
+        }
+    ).select("-password -refreshToken")
+
+    if (!user) {
+        throw new ApiError(402, "Some error in db!!")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, user, "Cover Image updated Sucessfully!")
+        )
+})
+
+// get the current user
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, req.user, "Current user fetched sucessfully")
+        )
+})
+
+// update user details
+const updateUserDetails = asyncHandler(async (req, res) => {
+    const { fullName, bio, } = req.body
+
+    if (!fullName || !bio) {
+        throw new ApiError(401, "fullname and bio is missing")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, {
+        fullName,
+        bio
+    }, {
+        new: true
+    }).select("-password -refreshToken")
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, user, "User detail update sucessfully")
+        )
+})
+
+// get the user profile including follower and following
+const getUserProfile = asyncHandler(async (req, res) => {
+    const userName = req.params
+
+    if (!userName) {
+        new ApiError(402, "User name is missing")
+    }
+
+    const userProfile = await User.aggregate([
+        {
+            $match: { _id: new mongoose.Types.ObjectId(req.user._id) }
+        },
+        {
+            $lookup: {
+                from: "follows",
+                localField: "_id",
+                foreignField: "toFollowing",
+                as: "follower"
+            }
+        },
+        {
+            $lookup: {
+                from: "follows",
+                localField: "_id",
+                foreignField: "follower",
+                as: "following"
+            }
+        },
+        {
+            $addFields: {
+                follower: {
+                    $size: "$follower"
+                },
+                following: {
+                    $size: "$following"
+                },
+                isFollowed: {
+                    $cond: {
+                        if: { $in: [req.user._id, "$follower"] },
+                        then: true,
+                        else: false,
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                password: 0,
+                refreshToken: 0
+            }
+        }
+    ])
+
+    if (!userProfile) {
+        throw new ApiError(404, "User not found!")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, userProfile, "User profile fetched sucessfully")
+        )
+})
 
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    updateProfilePic,
+    getCurrentUser,
+    updateCoverImage,
+    updateUserDetails,
+    getUserProfile,
 }

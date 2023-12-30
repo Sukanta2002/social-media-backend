@@ -14,12 +14,11 @@ const uploadOnCloudinary = async function (localFilePath) {
         //if the path is empty return null
         if (!localFilePath) return null;
 
-        console.log("hiii 1");
+        // console.log("hiii 1");
         //main code to upload file
         const responce = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"
         })
-        console.log(responce);
         fs.unlinkSync(localFilePath);
         return responce
     } catch (error) {
