@@ -381,6 +381,43 @@ const getUserProfile = asyncHandler(async (req, res) => {
         )
 })
 
+const changePassword = asyncHandler(async (req, res) => {
+    // get the current password and new password from the body
+    // check if the field are not empty
+    // get the user 
+    // compair the password
+    // set the new password
+    // save the user
+    const { newPassword, currentPassword } = req.body
+
+    if (!currentPassword || !newPassword) {
+        throw new ApiError(402, "current password or new password is missing")
+    }
+
+    const user = await User.findById(req.user._id)
+
+    if (!user) {
+        throw new ApiError(401, "Unauthorized access")
+    }
+
+    const isPasswordCorrect = await user.isPasswordCorrect(currentPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(401, "wrong password")
+    }
+
+    user.password = newPassword
+
+    await user.save()
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, {}, "Password Changed sucessfully!!")
+        )
+})
+
+
 export {
     registerUser,
     loginUser,
@@ -391,4 +428,5 @@ export {
     updateCoverImage,
     updateUserDetails,
     getUserProfile,
+    changePassword
 }

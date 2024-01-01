@@ -2,6 +2,7 @@ import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 
 import {
+    changePassword,
     getCurrentUser,
     getUserProfile,
     loginUser,
@@ -41,5 +42,6 @@ router.route("/update-cover-image").patch(verifyJWT, upload.single("coverImage")
 router.route("/get-current-user").get(verifyJWT, getCurrentUser)
 router.route("/update-user-details").patch(verifyJWT, updateUserDetails)
 router.route("/get-user-profile/:userName").get(verifyJWT, getUserProfile)
+router.route("/change-password").patch(verifyJWT,changePassword)
 
 export default router;
