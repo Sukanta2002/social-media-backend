@@ -319,7 +319,7 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 
 // get the user profile including follower and following
 const getUserProfile = asyncHandler(async (req, res) => {
-    const userName = req.params
+    const userName = req.params.userName
 
     if (!userName) {
         new ApiError(402, "User name is missing")
@@ -327,14 +327,14 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
     const userProfile = await User.aggregate([
         {
-            $match: { _id: new mongoose.Types.ObjectId(req.user._id) }
+            $match: { userName }
         },
         {
             $lookup: {
                 from: "follows",
                 localField: "_id",
                 foreignField: "toFollowing",
-                as: "follower"
+                as: "followers"
             }
         },
         {
@@ -342,20 +342,20 @@ const getUserProfile = asyncHandler(async (req, res) => {
                 from: "follows",
                 localField: "_id",
                 foreignField: "follower",
-                as: "following"
+                as: "followings"
             }
         },
         {
             $addFields: {
                 follower: {
-                    $size: "$follower"
+                    $size: "$followers"
                 },
                 following: {
-                    $size: "$following"
+                    $size: "$followings"
                 },
                 isFollowed: {
                     $cond: {
-                        if: { $in: [req.user._id, "$follower"] },
+                        if: { $in: [req.user._id, "$followers.follower"] },
                         then: true,
                         else: false,
                     }
@@ -370,7 +370,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
         }
     ])
 
-    if (!userProfile) {
+    if (!userProfile.length) {
         throw new ApiError(404, "User not found!")
     }
 

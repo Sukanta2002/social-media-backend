@@ -20,4 +20,9 @@ import userRouter from "./routes/user.routes.js";
 
 app.use("/api/v1/user", userRouter)
 
+// import router for follow
+import followRouter from "./routes/follow.routes.js";
+
+app.use("/api/v1/follow", followRouter)
+
 export default app;
