@@ -38,8 +38,35 @@ const postImage = asyncHandler(async (req, res) => {
         )
 })
 
+const getAllPosts = asyncHandler(async(req,res) => {
+    const user = req.user
 
+    if (!user) {
+        throw new ApiError(401,"Unauthorized access")
+    }
+
+    const posts = await Post.find({
+        "owner": user._id
+    })
+
+    if (posts.length === 0) {
+        return res
+        .status(200)
+        .json(
+            new ApiResponce(200,posts,"No post")
+        )
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponce(200,posts,"All posts fetched sucessfully!")
+    )
+})
+
+// const getPost = 
 
 export {
-    postImage
+    postImage,
+    getAllPosts
 }
