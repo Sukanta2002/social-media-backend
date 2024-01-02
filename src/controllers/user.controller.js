@@ -2,9 +2,8 @@ import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponce } from "../utils/apiResponce.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
 
 // A methord to generate the refresh abd access token
 const generateRefreshAccessToken = async (userId) => {
@@ -220,6 +219,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const updateProfilePic = asyncHandler(async (req, res) => {
     // console.log(req);
     const profilePicLocalUrl = req.file.path;
+    const oldProfilePicUrl = req.user.profilePic
 
     if (!profilePicLocalUrl) {
         throw new ApiError(402, "Profile pic is required!!")
@@ -244,6 +244,7 @@ const updateProfilePic = asyncHandler(async (req, res) => {
         throw new ApiError(402, "Some error in db!!")
     }
 
+    const result = await deleteOnCloudinary(oldProfilePicUrl);
     return res
         .status(200)
         .json(
@@ -255,6 +256,7 @@ const updateProfilePic = asyncHandler(async (req, res) => {
 const updateCoverImage = asyncHandler(async (req, res) => {
     // console.log(req);
     const coverImageLocalUrl = req.file.path;
+    const oldCcoverImageUrl = req.user.coverImage
 
     if (!coverImageLocalUrl) {
         throw new ApiError(402, "Profile pic is required!!")
@@ -278,6 +280,8 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     if (!user) {
         throw new ApiError(402, "Some error in db!!")
     }
+
+    const result = await deleteOnCloudinary(oldCcoverImageUrl)
 
     return res
         .status(200)
