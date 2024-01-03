@@ -1,4 +1,3 @@
 const DB_NAME = "socialMedia";
 
-
-export { DB_NAME }
+export { DB_NAME };
