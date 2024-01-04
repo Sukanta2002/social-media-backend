@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponce } from "../utils/apiResponce.js";
 import mongoose from "mongoose";
+import { User } from "../models/user.model.js";
 
 const createPost = asyncHandler(async (req, res) => {
     // get the image, caption from the req
@@ -56,7 +57,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
         .json(new ApiResponce(200, posts, "All posts fetched sucessfully!"));
 });
 
-const getPost = asyncHandler(async (req, res) => {
+const getPostById = asyncHandler(async (req, res) => {
     const postId = req.body.postId;
 
     if (!postId) {
@@ -134,4 +135,99 @@ const deletePost = asyncHandler(async (req, res) => {
         .json(new ApiResponce(200, deletedPost, "Post deleted Sucesfully!"));
 });
 
-export { createPost, getAllPosts, getPost, deletePost };
+const updatePost = asyncHandler(async (req, res) => {
+    const { caption, postId } = req.body;
+
+    const post = await Post.findOne({ _id: postId });
+
+    if (!post) {
+        throw new ApiError(404, "Post not found");
+    }
+
+    const oldImageUrl = post.image;
+    const imageLocalUrl = req.file?.path;
+
+    if (!imageLocalUrl) {
+        const updatedPost = await Post.findByIdAndUpdate(
+            post._id,
+            {
+                caption,
+            },
+            {
+                new: true,
+            }
+        );
+        if (!updatedPost) {
+            throw new ApiError(402, "Error in updating db");
+        }
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponce(200, updatedPost, "Post updated Sucessfully")
+            );
+    }
+
+    const imageUrl = await uploadOnCloudinary(imageLocalUrl);
+
+    if (!imageUrl) {
+        throw new ApiResponce(402, "Image is missing");
+    }
+
+    const updatedPost = await Post.findByIdAndUpdate(
+        post._id,
+        {
+            caption,
+            image: imageUrl.url,
+        },
+        {
+            new: true,
+        }
+    );
+
+    await deleteOnCloudinary(oldImageUrl);
+    if (!updatedPost) {
+        throw new ApiError(402, "Error in updating db");
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponce(200, updatedPost, "Post updated sucesfully"));
+});
+
+const getPostByUsername = asyncHandler(async (req, res) => {
+    const userName = req.params.userName;
+
+    if (!userName) {
+        throw new ApiError(402, "Username is missing");
+    }
+
+    const user = await User.findOne({ userName });
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    const posts = await Post.find({ owner: user._id });
+
+    if (posts.length === 0) {
+        throw new ApiError(404, "No post found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponce(200, posts, "All posts are fetched successfully")
+        );
+});
+
+export {
+    createPost,
+    getAllPosts,
+    getPostById,
+    deletePost,
+    updatePost,
+    getPostByUsername,
+};
+
+// TODO: getBookMarkedPosts
