@@ -31,4 +31,9 @@ import postRouter from "./routes/post.routes.js";
 
 app.use("/api/v1/post", postRouter);
 
+// import router for like
+import likeRoute from "./routes/like.routes.js";
+
+app.use("/api/v1/like", likeRoute);
+
 export default app;

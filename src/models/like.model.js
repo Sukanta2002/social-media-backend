@@ -9,7 +9,7 @@ const likeSchema = new Schema(
         },
         likedTo: {
             type: Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Post",
             required: true,
         },
     },

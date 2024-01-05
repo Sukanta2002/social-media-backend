@@ -231,3 +231,5 @@ export {
 };
 
 // TODO: getBookMarkedPosts
+// TODO: getLikedPosts
+// TODO: modify the get posts to show how many likes are their
